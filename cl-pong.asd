@@ -4,5 +4,6 @@
   :serial t
   :depends-on (:lispbuilder-sdl)
   :components ((:file "package")
+	       (:file "util")
                (:file "cl-pong")))
 
