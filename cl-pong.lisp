@@ -67,8 +67,13 @@
   (draw-string-solid-* (format nil "~{~d~^-~}" *score*)
 			   (/ +screen-width+ 2) 1 :justify :center))
 
-(defmethod move ((position ball) amount)
-  (with-accessors ((x x) (y y) (angle angle)) position
+(defmethod move ((ball ball) amount)
+  (with-accessors ((x x) (y y) (angle angle) (r r)) ball
+    (cond
+      ((<= (- x r) 0) (incf x (* 2 r)))
+      ((<= (- y r) 0) (incf y (* 2 r)))
+      ((>= (+ x r) +screen-width+) (decf x (* 2 r)))
+      ((>= (+ y r) +screen-height+) (decf y (* 2 r))))
     (let ((apply (angle->xy angle amount)))
       (rangef x 0 +screen-width+ (first apply)) 
       (rangef y 0 +screen-height+ (- (second apply))))))
@@ -98,20 +103,28 @@
 (defmethod reflect ((paddle paddle) (ball ball))
   (setf (angle ball) (reflect-axis :y (angle ball)))
   (setf (angle ball) (if (>= (angle ball) 180) 180 0))
-  (let* ((half (< (y ball) (y paddle)))
+  (let* ((half (<= (y ball) (y paddle)))
 	 (divisor (/ (abs (- (y ball) (y paddle)))
 		      (abs (extent paddle))))
-	 (angle (round (+ 20 (* 70 (float divisor))))))
+;;	 (angle (round (+ (if half 30 -30) (* 60 (float divisor))))))
+	 (angle (round (* 90 (float divisor)))))
     (incf (angle ball) (+ angle (if half
 				    (if (>= (angle ball) 180) 90 0)
-				    (if (>= (angle ball) 180) 0 90))))))
+				    (if (>= (angle ball) 180) 0 90))))
+    (cond
+      ((< 329 (angle ball)) (setf (angle ball) 330))
+      ((< (angle ball) 30) (setf (angle ball) 30))
+      ((< 149 (angle ball) 180) (setf (angle ball) 150))
+      ((< 179 (angle ball) 210) (setf (angle ball) 210))
+      (t (angle ball)))))
 
 (defmethod move ((paddle paddle) amount)
   (rangef (y paddle) 0 +screen-height+ amount))
 
 (defmethod draw ((paddle paddle))
-  (draw-box-* (x paddle) (- (y paddle) (extent paddle)) 
-	      +paddle-width+ (1+ (* 2 (extent paddle)))))
+  (with-accessors ((x x) (y y) (extent extent)) paddle
+    (draw-box-* (if (= (- x +paddle-width+) 0) 0 x) (- y extent) 
+		+paddle-width+ (* 2 extent))))
 
 (defmethod draw ((ball ball))
   (draw-filled-circle-* (round (x ball)) (round (y ball)) (r ball)))
@@ -122,10 +135,10 @@
 	(:sdl-key-q (push-quit-event))
 	(t (setf (game-p game) t)))
       (case key
-	((:sdl-key-w :sdl-key-a) (move (left game) -2))
-	((:sdl-key-s :sdl-key-d) (move (left game) 2))
-	((:sdl-key-up :sdl-key-left) (move (right game) -2))
-	((:sdl-key-down :sdl-key-right) (move (right game) 2))
+	((:sdl-key-w :sdl-key-a) (move (left game) -10))
+	((:sdl-key-s :sdl-key-d) (move (left game) 10))
+	((:sdl-key-up :sdl-key-left) (move (right game) -10))
+	((:sdl-key-down :sdl-key-right) (move (right game) 10))
 	(:sql-key-q (push-quit-event)))))
 
 (defun main ()
@@ -146,9 +159,10 @@
 	      (when (game-p *game*) (return-from start-game t))))
 	(:idle
 	 ;; TODO: Add AI here
-	 (when (game-p *game*)
-	   (reflect-p *game* (ball *game*))
-	   (if(game-p *game*)
-	      (move (ball *game*) 1)))
+	 (loop repeat 5 do
+	      (when (game-p *game*)
+		(reflect-p *game* (ball *game*))
+		(if (game-p *game*)
+		    (move (ball *game*) 1))))
 	 (draw *game*)
 	 (update-display))))))
