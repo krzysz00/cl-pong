@@ -1,0 +1,6 @@
+cl-pong is a Pong (tm) clone written in Common Lisp. There's no AI
+yet, and the only dependency is lispbuilder-sdl. This is a bit of a
+private bit of summer hacking, but feel free to take and do as you
+will (it's 3-clause BSD licensed).
+
+If you have any questions, contact <krzysdrewniak AT gmail DOT com>.
